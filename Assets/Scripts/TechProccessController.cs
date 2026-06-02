@@ -20,16 +20,23 @@ public class TechProcessController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI cokeValueText;
     [SerializeField] private Button startSimulationButton;
 
+    [Header("Ссылка на графики")]
+    [SerializeField] private ChartDisplay chartDisplay;
+
     [Header("Скорость симуляции")]
-    [Tooltip("Сколько реальных секунд занимает один шаг модели (0.05 ч)")]
     [SerializeField] private float realSecondsPerSimStep = 1f;
+
+    [Header("Ограничение симуляции")]
+    [SerializeField] private int maxDrainsBeforeStop = 3; // Количество сливов до остановки
+
+    private int _drainCount = 0;
 
     // Текущие параметры управления (т/ч для извести и кокса)
     private double _electrodeMovement = 0.0;  // диапазон [-0.02, +0.02]
-    private double _limeFeed  = 11.0;          // т/ч
-    private double _cokeFeed  = 4.0;           // т/ч
+    private double _limeFeed  = 12.0;          // т/ч
+    private double _cokeFeed  = 6.0;           // т/ч
 
-    private CarbideModel    _model;
+    private CalciumCarbideModel _model;
     private ControlInputs   _controlInputs = new ControlInputs();
     private Coroutine       _simulationCoroutine;
 
@@ -76,7 +83,11 @@ public class TechProcessController : MonoBehaviour
     {
         if (IsRunning) return;
 
-        _model       = new CarbideModel();
+        ChartDisplay chartDisplay = FindFirstObjectByType<ChartDisplay>();
+        if (chartDisplay != null)
+            chartDisplay.ClearAllCharts();
+
+        _model       = new CalciumCarbideModel();
         CurrentState = _model.InitialState();
         ApplyControlInputs();
 
@@ -106,9 +117,9 @@ public class TechProcessController : MonoBehaviour
     {
         _controlInputs.G_izvest = _limeFeed * 1000.0;
         _controlInputs.G_coks   = _cokeFeed * 1000.0;
-        _controlInputs.K_ctrl   = _electrodeMovement >  1e-9 ? 1
-                                 : _electrodeMovement < -1e-9 ? -1 : 0;
-        // Скорость движения электрода в м/ч, нормированная на шаг симуляции
+        _controlInputs.K_ctrl   = _electrodeMovement > 0 ? 1
+                                 : _electrodeMovement < 0 ? -1 : 0;
+
         _controlInputs.L_ctrl   = Math.Abs(_electrodeMovement) / SimStepHours;
     }
 
@@ -125,19 +136,37 @@ public class TechProcessController : MonoBehaviour
     private IEnumerator SimulationCoroutine()
     {
         IsRunning = true;
+        _drainCount = 0; // Сбрасываем счётчик при каждом запуске
 
         while (true)
         {
-            // Продвигаем модель на SimStepHours, используя мелкие внутренние шаги DtStep
             double targetTime = CurrentState.Time + SimStepHours;
+            bool drainOccurredThisStep = false;
+
+            // Проходим по мелким внутренним шагам модели (DtStep)
             while (CurrentState.Time < targetTime - _model.DtStep * 0.5)
+            {
                 CurrentState = _model.Advance(CurrentState, _controlInputs);
 
-            // Слив расплава: сбрасываем время и оставляем остаток
-            if (CurrentState.Mraspl >= _model.Mraspl_max)
+                // Модель сама выставляет DrainEvent = true на шаге, где произошёл слив
+                if (CurrentState.DrainEvent)
+                    drainOccurredThisStep = true;
+            }
+
+            // Если в текущем "большом" шаге был хотя бы один слив
+            if (drainOccurredThisStep)
             {
-                Debug.Log($"[CarbideVR] Слив расплава! t = {CurrentState.Time:F2} ч");
-                CurrentState = _model.InitialState();
+                _drainCount++;
+                Debug.Log($"[CarbideVR] Слив расплава! №{_drainCount}, t = {CurrentState.Time:F2} ч");
+
+                if (_drainCount >= maxDrainsBeforeStop)
+                {
+                    Debug.Log($"[CarbideVR] Достигнут лимит сливов ({maxDrainsBeforeStop}). Остановка симуляции.");
+
+                    // Корректно останавливаем корутину и возвращаем UI в исходное состояние
+                    StopSimulation();
+                    yield break; // Мгновенный выход из while(true)
+                }
             }
 
             yield return new WaitForSeconds(realSecondsPerSimStep);

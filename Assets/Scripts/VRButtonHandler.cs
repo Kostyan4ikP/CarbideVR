@@ -24,7 +24,8 @@ public class VRButtonHandler : MonoBehaviour
 
         if (interactable != null)
         {
-            interactable.selectEntered.AddListener(_ => OnButtonPressed());
+            // Изменяем событие с selectEntered на activated
+            interactable.activated.AddListener(args => OnButtonPressed());
             Debug.Log($"VRButtonHandler инициализирован для {parameterName}");
         }
         else
@@ -47,7 +48,7 @@ public class VRButtonHandler : MonoBehaviour
         XRSimpleInteractable interactable = GetComponent<XRSimpleInteractable>();
         if (interactable != null)
         {
-            interactable.selectEntered.RemoveListener(_ => OnButtonPressed());
+            interactable.activated.RemoveListener(args => OnButtonPressed());
         }
     }
 }

@@ -18,8 +18,10 @@ public class SimulationDisplay : MonoBehaviour
     [SerializeField] private TextMeshProUGUI meltMassText;        // Mraspl, кг
     [SerializeField] private TextMeshProUGUI arcLengthText;       // L_mpr, м
     [SerializeField] private TextMeshProUGUI voltageText;         // U, В
-    [SerializeField] private TextMeshProUGUI efficiencyText;      // КПД, %
     [SerializeField] private TextMeshProUGUI simTimeText;         // t, ч
+    [SerializeField] private TextMeshProUGUI COText;              // %
+    [SerializeField] private TextMeshProUGUI CO2Text;             // %
+    [SerializeField] private TextMeshProUGUI H2Text;              // %
 
     void Update()
     {
@@ -28,14 +30,16 @@ public class SimulationDisplay : MonoBehaviour
 
         var s = controller.CurrentState;
 
-        if (concentrationText  != null) concentrationText.text  = $"{s.C:F2} %";
-        if (temperatureText    != null) temperatureText.text    = $"{s.Temperature:F0} °C";
-        if (powerText          != null) powerText.text          = $"{s.Q:F0} кВт";
-        if (productivityText   != null) productivityText.text   = $"{s.Gprod / 1000.0:F2} т/ч";
-        if (meltMassText       != null) meltMassText.text       = $"{s.Mraspl:F0} кг";
-        if (arcLengthText      != null) arcLengthText.text      = $"{s.L_mpr:F3} м";
-        if (voltageText        != null) voltageText.text        = $"{s.U:F1} В";
-        if (efficiencyText     != null) efficiencyText.text     = $"{s.KPD * 100.0:F1} %";
-        if (simTimeText        != null) simTimeText.text        = $"{s.Time:F2} ч";
+        if (concentrationText  != null) concentrationText.text  = $"{s.C:F2}";
+        if (temperatureText    != null) temperatureText.text    = $"{s.Temperature:F0}";
+        if (powerText          != null) powerText.text          = $"{s.Q:F0}";
+        if (productivityText   != null) productivityText.text   = $"{s.Gprod / 1000.0:F2}";
+        if (meltMassText       != null) meltMassText.text       = $"{s.MeltMass:F0}";
+        if (arcLengthText      != null) arcLengthText.text      = $"{s.L_mpr:F3}";
+        if (voltageText        != null) voltageText.text        = $"{s.U:F1}";
+        if (simTimeText        != null) simTimeText.text        = $"{s.Time:F2}";
+        if (COText             != null) COText.text             = $"{s.CO / 1000:F3}";
+        if (CO2Text            != null) CO2Text.text            = $"{s.CO2 / 1000:F3}";
+        if (H2Text             != null) H2Text.text             = $"{s.H2 / 1000:F3}";
     }
 }
