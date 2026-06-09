@@ -1,15 +1,11 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class ScenarioManager : MonoBehaviour
 {
-    [Header("Сцена обучаемого")]
-    [SerializeField] private string _operatorScene = "OperatorScene";
-
     [Header("Панели")]
-    [SerializeField] private GameObject _autorisationPanel;
     [SerializeField] private GameObject _scenarioPanel;
+    [SerializeField] private GameObject _autorizationPanel;
 
     [Header("Кнопки")]
     [SerializeField] private Button _closeButton;
@@ -18,12 +14,31 @@ public class ScenarioManager : MonoBehaviour
     [Header("Ссылка на сеть")]
     public VRClient _network;
 
+    [Header("VR Movement")]
+    [SerializeField] private VRMovementController movementController;
+    [SerializeField] private Transform playerXRig;
+    [SerializeField] private Transform consoleSpawnPoint;
+
+    [Header("Объекты обучения")]
+    [SerializeField] private GameObject trainingObjects;
+
     private void Start()
     {
+        // Блокируем движение при старте игры
+        if (movementController != null)
+            movementController.DisableMovement();
+
+        // Скрываем объекты обучения до начала сценария
+        if (trainingObjects != null)
+            trainingObjects.SetActive(false);
+
+        // Подписываемся на кнопки
         if (_closeButton != null)
             _closeButton.onClick.AddListener(OnCloseButtonClicked);
         if (_startButton != null)
             _startButton.onClick.AddListener(OnStartButtonClicked);
+
+        Debug.Log("ScenarioManager initialized. Waiting for scenario selection...");
     }
 
     private void OnDestroy()
@@ -47,24 +62,47 @@ public class ScenarioManager : MonoBehaviour
 
         if (_scenarioPanel != null)
             _scenarioPanel.SetActive(false);
-        if (_autorisationPanel != null)
-            _autorisationPanel.SetActive(true);
+        if (_autorizationPanel != null)
+            _autorizationPanel .SetActive(true);
     }
 
     private void OnStartButtonClicked()
     {
-        if (string.IsNullOrEmpty(_operatorScene))
+        Debug.Log("Starting scenario...");
+
+        // 1. Скрываем панель выбора сценария
+        if (_scenarioPanel != null)
+            _scenarioPanel.SetActive(false);
+
+        // 2. Показываем объекты обучения
+        if (trainingObjects != null)
+            trainingObjects.SetActive(true);
+        else
+            Debug.LogWarning("Training Objects не назначены!");
+
+        // 3. Телепортируем игрока к пульту
+        if (playerXRig != null && consoleSpawnPoint != null)
         {
-            Debug.LogError("Имя сцены не указано в инспекторе!");
-            return;
+            playerXRig.transform.position = consoleSpawnPoint.position;
+            playerXRig.transform.rotation = consoleSpawnPoint.rotation;
+            Debug.Log($"Player teleported to console at {consoleSpawnPoint.position}");
+        }
+        else
+        {
+            Debug.LogError("Не назначен Player XR Rig или Console Spawn Point!");
         }
 
-        if (!Application.CanStreamedLevelBeLoaded(_operatorScene))
+        // 4. Разблокируем управление
+        if (movementController != null)
         {
-            Debug.LogError($"Сцена '{_operatorScene}' не найдена. Добавьте её в Build Settings (File → Build Settings → Add Open Scenes)");
-            return;
+            movementController.EnableMovement();
+            Debug.Log("Movement enabled");
+        }
+        else
+        {
+            Debug.LogWarning("VRMovementController не назначен!");
         }
 
-        SceneManager.LoadScene(_operatorScene);
+        Debug.Log("Scenario started successfully!");
     }
 }

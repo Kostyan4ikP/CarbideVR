@@ -4,14 +4,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Центральный контроллер симуляции карбидной печи.
-/// Запускает непрерывный цикл модели; кнопки меняют управляющие воздействия на лету.
-/// Один шаг симуляции (SimStepHours ч) выполняется каждые realSecondsPerSimStep реальных секунд.
-/// </summary>
 public class TechProcessController : MonoBehaviour
 {
-    // Каждый тик реального таймера продвигает симуляцию на 0.05 ч (как в WinForms-симуляторе)
     private const double SimStepHours = 0.05;
 
     [Header("Ссылки на UI")]
@@ -27,23 +21,20 @@ public class TechProcessController : MonoBehaviour
     [SerializeField] private float realSecondsPerSimStep = 1f;
 
     [Header("Ограничение симуляции")]
-    [SerializeField] private int maxDrainsBeforeStop = 3; // Количество сливов до остановки
+    [SerializeField] private int maxDrainsBeforeStop = 3;
 
     private int _drainCount = 0;
 
-    // Текущие параметры управления (т/ч для извести и кокса)
-    private double _electrodeMovement = 0.0;  // диапазон [-0.02, +0.02]
-    private double _limeFeed  = 12.0;          // т/ч
-    private double _cokeFeed  = 6.0;           // т/ч
+    private double _electrodeMovement = 0.0;
+    private double _limeFeed  = 12.0;
+    private double _cokeFeed  = 6.0;
 
     private CalciumCarbideModel _model;
     private ControlInputs   _controlInputs = new ControlInputs();
     private Coroutine       _simulationCoroutine;
 
-    /// <summary>Текущее состояние модели, доступно для чтения дисплеями.</summary>
     public SimulationStep CurrentState { get; private set; }
 
-    /// <summary>Симуляция запущена и работает.</summary>
     public bool IsRunning { get; private set; }
 
     void Start()
@@ -51,13 +42,6 @@ public class TechProcessController : MonoBehaviour
         UpdateUI();
     }
 
-    // ── Управление параметрами (вызывается кнопками через VRButtonHandler) ──
-
-    /// <summary>
-    /// Изменяет один из управляющих параметров.
-    /// param: "Electrode" | "Lime" | "Coke"
-    /// delta: шаг изменения (положительный или отрицательный)
-    /// </summary>
     public void ChangeParameter(string param, float delta)
     {
         switch (param)
@@ -76,8 +60,6 @@ public class TechProcessController : MonoBehaviour
         ApplyControlInputs();
         UpdateUI();
     }
-
-    // ── Запуск / остановка ───────────────────────────────────────────────
 
     public void StartSimulation()
     {
@@ -111,8 +93,6 @@ public class TechProcessController : MonoBehaviour
             startSimulationButton.interactable = true;
     }
 
-    // ── Внутренняя логика ────────────────────────────────────────────────
-
     private void ApplyControlInputs()
     {
         _controlInputs.G_izvest = _limeFeed * 1000.0;
@@ -136,24 +116,21 @@ public class TechProcessController : MonoBehaviour
     private IEnumerator SimulationCoroutine()
     {
         IsRunning = true;
-        _drainCount = 0; // Сбрасываем счётчик при каждом запуске
+        _drainCount = 0;
 
         while (true)
         {
             double targetTime = CurrentState.Time + SimStepHours;
             bool drainOccurredThisStep = false;
 
-            // Проходим по мелким внутренним шагам модели (DtStep)
             while (CurrentState.Time < targetTime - _model.DtStep * 0.5)
             {
                 CurrentState = _model.Advance(CurrentState, _controlInputs);
 
-                // Модель сама выставляет DrainEvent = true на шаге, где произошёл слив
                 if (CurrentState.DrainEvent)
                     drainOccurredThisStep = true;
             }
 
-            // Если в текущем "большом" шаге был хотя бы один слив
             if (drainOccurredThisStep)
             {
                 _drainCount++;
@@ -163,9 +140,8 @@ public class TechProcessController : MonoBehaviour
                 {
                     Debug.Log($"[CarbideVR] Достигнут лимит сливов ({maxDrainsBeforeStop}). Остановка симуляции.");
 
-                    // Корректно останавливаем корутину и возвращаем UI в исходное состояние
                     StopSimulation();
-                    yield break; // Мгновенный выход из while(true)
+                    yield break;
                 }
             }
 
