@@ -5,14 +5,34 @@ using System.Collections;
 
 public class CountdownTimer : MonoBehaviour
 {
-    [SerializeField] private TextMeshProUGUI timerTextTMP; // или TextMeshPro
+    [SerializeField] private TextMeshProUGUI timerTextTMP;
     [SerializeField] private UnityEngine.Events.UnityEvent onTimerComplete;
 
     private float timeRemaining = 45f * 60f; // 45 минут в секундах
+    private Coroutine timerCoroutine;
 
-    void Start()
+    // Используем OnEnable вместо Start. 
+    // Он вызывается каждый раз, когда объект становится активным (SetActive(true))
+    private void OnEnable()
     {
-        StartCoroutine(TimerCoroutine());
+        // Запускаем таймер только если он еще не запущен
+        if (timerCoroutine == null)
+        {
+            Debug.Log("Таймер активирован и запущен!");
+            timerCoroutine = StartCoroutine(TimerCoroutine());
+        }
+    }
+
+    // Останавливаем корутину, когда объект скрывают (SetActive(false))
+    // Это предотвращает утечки памяти и баги при повторной активации
+    private void OnDisable()
+    {
+        if (timerCoroutine != null)
+        {
+            StopCoroutine(timerCoroutine);
+            timerCoroutine = null;
+            Debug.Log("Таймер остановлен (объект скрыт).");
+        }
     }
 
     IEnumerator TimerCoroutine()
@@ -24,18 +44,27 @@ public class CountdownTimer : MonoBehaviour
             int seconds = Mathf.FloorToInt(timeRemaining % 60);
             string timeString = string.Format("{0:00}:{1:00}", minutes, seconds);
 
-
             if (timerTextTMP != null)
+            {
                 timerTextTMP.text = timeString;
+            }
+            else
+            {
+                // ВАЖНО: Этот лог подскажет вам, если вы забыли перетащить текст в инспектор!
+                Debug.LogError("Ошибка таймера: Поле timerTextTMP не назначено в Инспекторе!", this);
+            }
 
             yield return null;
-            timeRemaining -= Time.deltaTime;
+
+            // ИСПОЛЬЗУЕМ unscaledDeltaTime! 
+            // Это гарантирует, что таймер будет тикать, даже если игра на паузе во время авторизации.
+            timeRemaining -= Time.unscaledDeltaTime;
         }
 
         if (timerTextTMP != null)
             timerTextTMP.text = "00:00";
 
-        // Вызываем ивент по окончанию
+        Debug.Log("Таймер завершен!");
         onTimerComplete?.Invoke();
     }
 }

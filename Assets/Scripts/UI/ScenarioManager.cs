@@ -16,8 +16,6 @@ public class ScenarioManager : MonoBehaviour
 
     [Header("VR Movement")]
     [SerializeField] private VRMovementController movementController;
-    [SerializeField] private Transform playerXRig;
-    [SerializeField] private Transform consoleSpawnPoint;
 
     [Header("Объекты обучения")]
     [SerializeField] private GameObject trainingObjects;
@@ -70,37 +68,21 @@ public class ScenarioManager : MonoBehaviour
     {
         Debug.Log("Starting scenario...");
 
-        // 1. Скрываем панель выбора сценария
+        // 1. Скрываем панель авторизации
         if (_scenarioPanel != null)
             _scenarioPanel.SetActive(false);
 
-        // 2. Показываем объекты обучения
+        // 2. Показываем ангар и объекты обучения
         if (trainingObjects != null)
             trainingObjects.SetActive(true);
         else
             Debug.LogWarning("Training Objects не назначены!");
 
-        // 3. Телепортируем игрока к пульту
-        if (playerXRig != null && consoleSpawnPoint != null)
-        {
-            playerXRig.transform.position = consoleSpawnPoint.position;
-            playerXRig.transform.rotation = consoleSpawnPoint.rotation;
-            Debug.Log($"Player teleported to console at {consoleSpawnPoint.position}");
-        }
-        else
-        {
-            Debug.LogError("Не назначен Player XR Rig или Console Spawn Point!");
-        }
-
-        // 4. Разблокируем управление
+        // 3. Разблокируем управление
         if (movementController != null)
         {
             movementController.EnableMovement();
             Debug.Log("Movement enabled");
-        }
-        else
-        {
-            Debug.LogWarning("VRMovementController не назначен!");
         }
 
         Debug.Log("Scenario started successfully!");

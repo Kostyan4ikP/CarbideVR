@@ -47,7 +47,7 @@ public class TechProcessController : MonoBehaviour
         switch (param)
         {
             case "Electrode":
-                _electrodeMovement = Math.Clamp(_electrodeMovement + delta, -0.020, 0.020);
+                _electrodeMovement = Math.Clamp(_electrodeMovement + delta, -15.0, 15.0);
                 break;
             case "Lime":
                 _limeFeed = Math.Clamp(_limeFeed + delta, 8.0, 16.0);
@@ -100,13 +100,13 @@ public class TechProcessController : MonoBehaviour
         _controlInputs.K_ctrl   = _electrodeMovement > 0 ? 1
                                  : _electrodeMovement < 0 ? -1 : 0;
 
-        _controlInputs.L_ctrl   = Math.Abs(_electrodeMovement) / SimStepHours;
+        _controlInputs.L_ctrl   = Math.Abs(_electrodeMovement / 1000) / SimStepHours;
     }
 
     private void UpdateUI()
     {
         if (electrodeValueText != null)
-            electrodeValueText.text = $"{_electrodeMovement:F3}";
+            electrodeValueText.text = $"{_electrodeMovement}";
         if (limeValueText != null)
             limeValueText.text = $"{_limeFeed:F1}";
         if (cokeValueText != null)
