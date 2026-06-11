@@ -20,17 +20,18 @@ public class ScenarioManager : MonoBehaviour
     [Header("Объекты обучения")]
     [SerializeField] private GameObject trainingObjects;
 
+    private string _selectedScenarioId;
+
+    public bool IsScenarioSelected => !string.IsNullOrEmpty(_selectedScenarioId);
+
     private void Start()
     {
-        // Блокируем движение при старте игры
         if (movementController != null)
             movementController.DisableMovement();
 
-        // Скрываем объекты обучения до начала сценария
         if (trainingObjects != null)
             trainingObjects.SetActive(false);
 
-        // Подписываемся на кнопки
         if (_closeButton != null)
             _closeButton.onClick.AddListener(OnCloseButtonClicked);
         if (_startButton != null)
@@ -47,6 +48,12 @@ public class ScenarioManager : MonoBehaviour
             _startButton.onClick.RemoveListener(OnStartButtonClicked);
     }
 
+    public void OnScenarioSelected(string scenarioId)
+    {
+        _selectedScenarioId = scenarioId;
+        Debug.Log($"Scenario selected: {scenarioId}");
+    }
+
     private void OnCloseButtonClicked()
     {
         if (_network != null)
@@ -61,29 +68,30 @@ public class ScenarioManager : MonoBehaviour
         if (_scenarioPanel != null)
             _scenarioPanel.SetActive(false);
         if (_autorizationPanel != null)
-            _autorizationPanel .SetActive(true);
+            _autorizationPanel.SetActive(true);
     }
 
     private void OnStartButtonClicked()
     {
-        Debug.Log("Starting scenario...");
+        Debug.Log($"Starting scenario: {_selectedScenarioId}");
 
-        // 1. Скрываем панель авторизации
         if (_scenarioPanel != null)
             _scenarioPanel.SetActive(false);
 
-        // 2. Показываем ангар и объекты обучения
         if (trainingObjects != null)
             trainingObjects.SetActive(true);
         else
             Debug.LogWarning("Training Objects не назначены!");
 
-        // 3. Разблокируем управление
         if (movementController != null)
         {
             movementController.EnableMovement();
             Debug.Log("Movement enabled");
         }
+
+        // 🔹 НОВОЕ: здесь можно использовать _selectedScenarioId
+        // Например, передать его в сеть, загрузить нужную сцену и т.д.
+        // _network.StartScenario(_selectedScenarioId);
 
         Debug.Log("Scenario started successfully!");
     }
