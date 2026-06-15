@@ -1,4 +1,4 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using XCharts.Runtime;
 
 public class ChartDisplay : MonoBehaviour
@@ -19,11 +19,11 @@ public class ChartDisplay : MonoBehaviour
 
         var state = controller.CurrentState;
 
-        // Добавляем точку ТОЛЬКО когда время симуляции изменилось
+        // Р”РѕР±Р°РІР»СЏРµРј С‚РѕС‡РєСѓ РўРћР›Р¬РљРћ РєРѕРіРґР° РІСЂРµРјСЏ СЃРёРјСѓР»СЏС†РёРё РёР·РјРµРЅРёР»РѕСЃСЊ
         if (System.Math.Abs(state.Time - _lastRecordedTime) < 0.0001)
             return;
 
-        // Слив расплава — время сбросилось, очищаем графики
+        // РЎР»РёРІ СЂР°СЃРїР»Р°РІР° вЂ” РІСЂРµРјСЏ СЃР±СЂРѕСЃРёР»РѕСЃСЊ, РѕС‡РёС‰Р°РµРј РіСЂР°С„РёРєРё
         if (state.Time < _lastRecordedTime)
         {
             ClearAllCharts();
@@ -42,7 +42,7 @@ public class ChartDisplay : MonoBehaviour
     {
         if (chart == null) return;
 
-        // Явно указываем тип Line
+        // РЇРІРЅРѕ СѓРєР°Р·С‹РІР°РµРј С‚РёРї Line
         if (chart.series.Count == 0)
         {
             chart.AddSerie<Line>("data");
@@ -60,6 +60,6 @@ public class ChartDisplay : MonoBehaviour
         lmprChart?.ClearData();
         _lastRecordedTime = -1f;
 
-        Debug.Log("Графики очищены");
+        Debug.Log("Р“СЂР°С„РёРєРё РѕС‡РёС‰РµРЅС‹");
     }
 }

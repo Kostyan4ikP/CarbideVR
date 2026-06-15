@@ -1,11 +1,13 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
+using Newtonsoft.Json;
 
 [System.Serializable]
 public class ScenarioData
 {
-    public string id;
-    public string title;
+    public int id;
+    public object title;
 }
 
 public class ScenarioListManager : MonoBehaviour
@@ -14,55 +16,53 @@ public class ScenarioListManager : MonoBehaviour
     public Transform contentPanel;
     public GameObject scenarioPrefab;
 
-    [Header("Ссылка на ScenarioManager")]
-    [SerializeField] private ScenarioManager _scenarioManager; 
+    [Header("Ссылка на MenuManager")]
+    [SerializeField] private MenuManager _menuManager;
+
+    [Header("Ссылка на ScenarioDisplay")]
+    [SerializeField] private ScenarioDisplay _scenarioDisplay;
 
     [Header("Данные из БД")]
-    public List<ScenarioData> scenariosFromDB;
+    Dictionary<int, Dictionary<string, object>> scenariosFromDB;
+
+    [Header("Сервер")]
+    public VRClient network;
 
     private ScenarioItemUI _currentlySelected;
 
-    void Start()
+    public Dictionary<object, object> currentScenarioData;
+    public Dictionary<object, Dictionary<object, object>> currentScenarioTechProcess;
+
+    void OnEnable()
     {
-        if (scenariosFromDB == null || scenariosFromDB.Count == 0)
-        {
-            scenariosFromDB = new List<ScenarioData>
-            {
-                new ScenarioData { id = "1", title = "Сценарий 1" }
-            };
-        }
-        PopulateList();
+        ReadScenariosFromServer();
     }
 
     void PopulateList()
     {
-        // Очищаем старые элементы
+        if (scenariosFromDB == null || scenariosFromDB.Count == 0)
+        {
+            Debug.LogWarning("Нет сценариев для отображения");
+            return;
+        }
+
         foreach (Transform child in contentPanel)
             Destroy(child.gameObject);
 
-        // Создаем новые элементы
-        foreach (var data in scenariosFromDB)
+        foreach (var kvp in scenariosFromDB)
         {
+            int scenarioId = kvp.Key;
+            var scenarioName = kvp.Value["name"];
+
+            ScenarioData data = new ScenarioData
+            {
+                id = scenarioId,
+                title = scenarioName
+            };
+
             GameObject newItem = Instantiate(scenarioPrefab, contentPanel);
             ScenarioItemUI itemUI = newItem.GetComponent<ScenarioItemUI>();
             itemUI.Setup(data, this);
-        }
-
-        // 🔹 НОВОЕ: автоматически выбираем первый элемент, если список не пуст
-        if (scenariosFromDB.Count > 0 && contentPanel.childCount > 0)
-        {
-            // Получаем первый элемент из списка
-            Transform firstItemTransform = contentPanel.GetChild(0);
-            ScenarioItemUI firstItemUI = firstItemTransform.GetComponent<ScenarioItemUI>();
-
-            // Получаем данные первого сценария
-            ScenarioData firstData = scenariosFromDB[0];
-
-            // Программно "кликаем" по первому элементу
-            if (firstItemUI != null)
-            {
-                OnScenarioClicked(firstItemUI, firstData);
-            }
         }
     }
 
@@ -78,13 +78,114 @@ public class ScenarioListManager : MonoBehaviour
 
         Debug.Log("Выбран сценарий ID: " + data.id + ", Название: " + data.title);
 
-        if (_scenarioManager != null)
+        if (_menuManager != null)
         {
-            _scenarioManager.OnScenarioSelected(data.id);
+            _menuManager.EnableStartButton();
+        }
+
+        if (_menuManager != null)
+        {
+            _menuManager.OnScenarioSelected(data.id.ToString());
         }
         else
         {
             Debug.LogWarning("ScenarioManager не назначен в ScenarioListManager!");
+        }
+
+        if (_scenarioDisplay != null)
+        {
+            _scenarioDisplay.SetScenarioId(data.id);
+        }
+
+        GetCurrentScenarioData(data.id);
+    }
+
+    public async void ReadScenariosFromServer()
+    {
+        Dictionary<string, object> request = new Dictionary<string, object>()
+        {
+            { "method", "getScenarios" },
+        };
+
+        var response = await network.SendRequestAsync(request);
+
+        if (response.TryGetValue("success", out var successObj) && successObj is bool success)
+        {
+            if (success)
+            {
+                scenariosFromDB = JsonConvert.DeserializeObject<Dictionary<int, Dictionary<string, object>>>(response["data"].ToString());
+
+                Debug.Log($"Получено сценариев с сервера: {scenariosFromDB.Count}");
+
+                PopulateList();
+            }
+            else
+            {
+                Debug.LogError("Сервер вернул success = false");
+            }
+        }
+        else
+        {
+            Debug.LogError("Не удалось получить ответ от сервера или неверный формат");
+        }
+    }
+    public async void GetCurrentScenarioData(int id_scenario)
+    {
+        Dictionary<string, object> data = new Dictionary<string, object>()
+    {
+        {"method", "getScenarioData"},
+        {"id_scenario", id_scenario},
+    };
+
+        var response = await network.SendRequestAsync(data, timeout: 10f);
+
+        if (response.TryGetValue("success", out var successObj) && successObj is bool success)
+        {
+            if (success)
+            {
+                currentScenarioData = JsonConvert.DeserializeObject<Dictionary<object, object>>(response["data"].ToString());
+                currentScenarioTechProcess = JsonConvert.DeserializeObject<Dictionary<object, Dictionary<object, object>>>(response["techProcess"].ToString());
+
+                Debug.Log("Данные сценария получены");
+
+                if (_scenarioDisplay != null)
+                {
+                    _scenarioDisplay.SetScenarioData(currentScenarioData, currentScenarioTechProcess, scenariosFromDB);
+                }
+
+                int trainingTime = 0;
+                string scenarioName = "";
+
+                if (scenariosFromDB != null && scenariosFromDB.TryGetValue(id_scenario, out var scenarioInfo))
+                {
+                    if (scenarioInfo.TryGetValue("time", out var timeValue))
+                    {
+                        trainingTime = System.Convert.ToInt32(timeValue);
+                    }
+
+                    if (scenarioInfo.TryGetValue("name", out var nameValue))
+                    {
+                        scenarioName = nameValue?.ToString() ?? "";
+                    }
+                }
+
+                ScenarioDataManager.Instance.SaveScenarioData(
+                    id_scenario,
+                    scenarioName,
+                    trainingTime,
+                    currentScenarioData,
+                    currentScenarioTechProcess,
+                    _menuManager._userId
+                );
+            }
+            else
+            {
+                Debug.LogError("Сервер вернул success = false");
+            }
+        }
+        else
+        {
+            Debug.LogError("Не удалось получить ответ от сервера или неверный формат");
         }
     }
 }

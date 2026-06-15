@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using TMPro;
 
-public class inputPanelUI : MonoBehaviour
+public class InputPanelUI : MonoBehaviour
 {
     [Header("Обязательные ссылки")]
     [SerializeField] private TMP_InputField _targetInputField;
@@ -9,7 +9,6 @@ public class inputPanelUI : MonoBehaviour
 
     private void Reset()
     {
-        // Автоматически найдёт InputField на том же объекте при добавлении компонента
         if (_targetInputField == null)
             _targetInputField = GetComponent<TMP_InputField>();
     }
@@ -30,13 +29,11 @@ public class inputPanelUI : MonoBehaviour
             return;
         }
 
-        // Подписываемся на событие выбора поля
         _targetInputField.onSelect.AddListener(OpenNumpad);
     }
 
     private void OnDestroy()
     {
-        // Обязательно отписываемся, чтобы избежать утечек памяти
         if (_targetInputField != null)
             _targetInputField.onSelect.RemoveListener(OpenNumpad);
     }
@@ -49,6 +46,5 @@ public class inputPanelUI : MonoBehaviour
         );
     }
 
-    // Публичный метод для программного открытия нумпада для этого поля
     public void OpenNumpadManually() => OpenNumpad(string.Empty);
 }

@@ -4,56 +4,59 @@ using System.Collections.Generic;
 public sealed class SimulationStep
 {
     public double Time { get; set; }
-    public double C { get; set; }   // концентрация продукта CaC₂, %
-    public double H_prod { get; set; }   // высота слоя расплава, м (h_prod)
-    public double L_mpr { get; set; }   // МПР, м
-    public double Temperature { get; set; }   // °C
-    public double R { get; set; }   // мОм
-    public double E { get; set; }   // ЭДС, В
-    public double U { get; set; }   // напряжение, В
-    public double Q { get; set; }   // мощность, кВт
-    public double W { get; set; }   // накопленная энергия, кВт·ч
-    public double MeltMass { get; set; }   // масса расплава, кг (= ρ·S·h_prod)
-    public double Gprod { get; set; }   // производительность по CaC₂, кг/ч
-    public double KPD_eff { get; set; }   // текущий КПД
-    public bool DrainEvent { get; set; }   // на этом шаге сработал слив
-    public bool FeedEvent { get; set; }   // на этом шаге сработала загрузка порции сырья
+    public double C { get; set; } 
+    public double H_prod { get; set; } 
+    public double L_mpr { get; set; }
+    public double Temperature { get; set; }
+    public double R { get; set; }  
+    public double E { get; set; }  
+    public double U { get; set; }  
+    public double Q { get; set; }   
+    public double W { get; set; } 
+    public double MeltMass { get; set; }
+    public double Gprod { get; set; }
+    public double KPD_eff { get; set; }
+    public bool DrainEvent { get; set; }
+    public bool FeedEvent { get; set; }
     public double CO { get; set; }
     public double CO2 { get; set; }
     public double H2 { get; set; }
+    public double LimeFeed { get; set; }
+    public double CokeFeed { get; set;}
+    public double ElectrodeMovement { get; set; }
 }
 
 public sealed class CalciumCarbideModel
 {
-    public double Length { get; set; } = 9.9;     // длина ванны, м
-    public double Width { get; set; } = 7.9;     // ширина ванны, м
-    public double H { get; set; } = 4.65;    // высота печи, м
-    public double D_el { get; set; } = 1.5;     // диаметр электрода, м
+    public double Length { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(1);
+    public double Width { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(2);
+    public double H { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(3);
+    public double D_el { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(4);
 
     public double Rho_prod { get; set; } = 2220;
 
-    public double Rho_el { get; set; } = 400;
+    public double Rho_el { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(25);
     public double Craspl { get; set; } = 0.27;
 
-    public double H_max { get; set; } = 0.30;
-    public double H_min { get; set; } = 0.2;
+    public double H_max { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(6);
+    public double H_min { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(5);
     public double Mraspl_0 { get; set; } = 0;
-    public double C_CaC2_0 { get; set; } = 65;
+    public double C_CaC2_0 { get; set; } = ScenarioDataManager.Instance.GetTechParamAsDouble(27, "value");
 
     public double Mraspl_max => Rho_prod * S_bath * H_max;
     public double Mraspl_min => Rho_prod * S_bath * H_min;
     public double Mraspl => Mraspl_max;
 
-    public double L_mpr_nom { get; set; } = 0.3;
-    public double T_nom { get; set; } = 2050;
-    public double Tsmelt { get; set; } = 1800;
-    public double T0 { get; set; } = 25;
-    public double Cprod_nom { get; set; } = 75.0;
+    public double L_mpr_nom { get; set; } = ScenarioDataManager.Instance.GetTechParamAsDouble(29, "value");
+    public double T_nom { get; set; } = ScenarioDataManager.Instance.GetTechParamAsDouble(28, "value");
+    public double Tsmelt { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(24);
+    public double T0 { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(20);
+    public double Cprod_nom { get; set; } = ScenarioDataManager.Instance.GetTechParamAsDouble(27, "min");
     
-    public double K { get; set; } = 0.155;   // Электрохим эквивалент, кг/(А·ч)
-    public double Ks { get; set; } = 1.47;    // коэффициент шихты
+    public double K { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(22);
+    public double Ks { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(23);
 
-    public double KPD_0 { get; set; } = 0.85;
+    public double KPD_0 { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(7);
     public double KPD_max { get; set; } = 0.92;
     public double KPD_changeInterval { get; set; } = 0.5;
 
@@ -64,32 +67,28 @@ public sealed class CalciumCarbideModel
     private double _kpdLastUpdateTime = double.NegativeInfinity;
     private readonly Random _kpdRng = new Random(42);
 
-    public double I_el { get; set; } = 88000;  // ток электрода, А (88 кА)
-    public double Cos_phi { get; set; } = 0.75;   // коэффициент мощности карб. печи
-    public double R_nom { get; set; } = 1.4;    // мОм (R_фаз по материалам)
-    public double E_nom { get; set; } = 100.0;  // В 
-    public double K_Rl { get; set; } = 1.5;    // мОм/м
-    public double K_Rt { get; set; } = 3e-4;   // мОм/°C 
-    public double K_Rc { get; set; } = 0.04;   // мОм/%
-    public double K_Et { get; set; } = 0.04;   // В/°C
-    public double K_Ec { get; set; } = 80.0;   // В, 
+    public double I_el { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(10); 
+    public double Cos_phi { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(8);
+    public double R_nom { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(17);
+    public double E_nom { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(18); 
+    public double K_Rl { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(12);
+    public double K_Rt { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(13);
+    public double K_Rc { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(14);
+    public double K_Et { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(15);
+    public double K_Ec { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(16);
 
-    public double A_raspl { get; set; } = 8.82;  // теплоотдача через стены, Вт/(м²·°C)
-    public double K_bottom { get; set; } = 60;    // теплоотдача через подину, Вт/(м²·°C)
+    public double A_raspl { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(21);
+    public double K_bottom { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(19);
 
-    public double G_el { get; set; } = 216; // кг/ч
+    public double G_el { get; set; } = ScenarioDataManager.Instance.GetScenarioParamAsDouble(26);
 
-    public double L_mpr_min { get; set; } = 0;
-    public double L_mpr_max { get; set; } = 1.5;
-
-    // ── 11. Параметры расчёта ──────────────────────────────────────────
-    public double DtStep { get; set; } = 0.01;  // шаг интегрирования
+    public double DtStep { get; set; } = 0.01;
 
     public double NPortionsPerCycle { get; set; } = 12;
 
     private double _nextFeedTime = -1.0;
-    public double TauMin { get; set; } = 0.05;   // ≥ 3 мин между порциями
-    public double TauMax { get; set; } = 0.15;   // ≤ 9 мин между порциями (для видимой динамики)
+    public double TauMin { get; set; } = 0.05;
+    public double TauMax { get; set; } = 0.15;
     private double ComputeTau(double sumG, double kpd)
     {
         double netRate = sumG - Ks * K * I_el * kpd;
@@ -105,8 +104,8 @@ public sealed class CalciumCarbideModel
         if (tau > TauMax) tau = TauMax;
         return tau;
     }
-    public double S_bath => Length * Width;                     // прямоугольная ванна
-    public double S_el => Math.PI * (D_el / 2) * (D_el / 2);    // электрод круглый
+    public double S_bath => Length * Width;
+    public double S_el => Math.PI * (D_el / 2) * (D_el / 2);
     public double S_bottom => S_bath + S_el;
 
     public double Gprod => KPD_0 * I_el * K;
@@ -150,20 +149,20 @@ public sealed class CalciumCarbideModel
         E_nom - K_Et * (Traspl - T_nom)
               - K_Ec * Math.Log(Cprod / Cprod_nom);
 
-    public double CalcU(double R, double E) => (I_el / 1000.0) * R + E;
+    public double CalcU(double R, double E) => I_el * R + E;
 
     public double CalcQ(double U) => U * I_el * Cos_phi / 1000.0;
 
-    public double Gprod_of(double kpd) => K * I_el * kpd;   // кг/ч
-    private double V_el() => G_el / (Rho_el * S_el);        // м/ч
-    private double V_prod(double kpd) => Gprod_of(kpd) / (Rho_prod * S_bath);  // м/ч
+    public double Gprod_of(double kpd) => K * I_el * kpd;
+    private double V_el() => G_el / (Rho_el * S_el);
+    private double V_prod(double kpd) => Gprod_of(kpd) / (Rho_prod * S_bath);
     private double Calc_dC(double sumG, double meltMass, double kpd)
     {
-        double mass = meltMass > 1.0 ? meltMass : 1.0;     // защита от /0
-        return 100.0 * (sumG - Ks * Gprod_of(kpd)) / mass; // %/ч
+        double mass = meltMass > 1.0 ? meltMass : 1.0;
+        return 100.0 * (sumG - Ks * Gprod_of(kpd)) / mass;
     }
 
-    private double Calc_dH(double kpd) => V_prod(kpd);     // м/ч
+    private double Calc_dH(double kpd) => V_prod(kpd);
 
     private double Calc_dLmpr(ControlInputs controls, double kpd)
     {
@@ -172,8 +171,8 @@ public sealed class CalciumCarbideModel
 
     private double Calc_dTemp(double Traspl, double lmpr, double Cprod, double meltMass)
     {
-        double R_ohm = CalcR(lmpr, Traspl, Cprod) * 1e-3;     // мОм → Ом
-        double heatW = I_el * I_el * R_ohm;                   // Вт (омический нагрев)
+        double R_ohm = CalcR(lmpr, Traspl, Cprod);
+        double heatW = I_el * I_el * R_ohm;
         double mass = meltMass > 1.0 ? meltMass : 1.0;
         return 3.6 * (heatW
                      - A_raspl * S_bath * (Traspl - Tsmelt)
@@ -223,12 +222,10 @@ public sealed class CalciumCarbideModel
         if (newC > 100.0) newC = 100.0;
 
         double newLmpr = s.L_mpr + DtStep * Calc_dLmpr(controls, kpd);
-        if (newLmpr < L_mpr_min) newLmpr = L_mpr_min;
-        if (newLmpr > L_mpr_max) newLmpr = L_mpr_max;
 
         double newTemp = s.Temperature
             + DtStep * Calc_dTemp(s.Temperature, s.L_mpr, s.C, meltMassPrev);
-        if (newTemp < T0) newTemp = T0;      // страховочные границы
+        if (newTemp < T0) newTemp = T0;
         if (newTemp > 4000.0) newTemp = 4000.0;
 
         var gas = CarbideEmissions.CalculateMasses(Gprod_of(kpd));
@@ -264,6 +261,9 @@ public sealed class CalciumCarbideModel
             CO = gas.MassCO,
             CO2 = gas.MassCO2,
             H2 = gas.MassH2,
+            LimeFeed = controls.G_izvest / 1000,
+            CokeFeed = controls.G_coks / 1000,
+            ElectrodeMovement = controls.K_ctrl * controls.L_ctrl * 1000
         };
     }
 
@@ -332,22 +332,21 @@ public static class CarbideEmissions
     private const double M_CO2 = 44;
     private const double M_H2 = 2;
 
-    // --- 2. Коэффициенты выхода по реакциям (доли) ---
-    private const double Yield_j1 = 0.80; // Основная реакция (CaO + 3C → CaC₂ + CO)
-    private const double Yield_j2 = 0.10; // Побочная реакция (2CaO + CaC₂ → 3Ca + 2CO)
-    private const double Yield_j3 = 0.05; // Реакция с влагой (C + H₂O → H₂ + CO)
-    private const double Yield_j4 = 0.05; // Окисление (2CaC₂ + 5O₂ → 2CaO + 4CO₂)
+    private const double Yield_j1 = 0.80;
+    private const double Yield_j2 = 0.10; 
+    private const double Yield_j3 = 0.05; 
+    private const double Yield_j4 = 0.05; 
 
-    private const double MOISTURE_RATIO = 0.15; // Моли влаги, вступающей в реакцию, на 1 моль CaC₂
+    private const double MOISTURE_RATIO = 0.15;
 
     public static double GetMassCO(double G_CaC2)
     {
         double n_CaC2 = (G_CaC2 * 1e6) / M_CaC2;
 
         double n_CO = n_CaC2 * (
-            (1.0 * Yield_j1) +                                           // Реакция 1: 1 моль CO
-            (2.0 * Yield_j2) +                                           // Реакция 2: 2 моля CO
-            (1.0 * MOISTURE_RATIO * Yield_j3)                            // Реакция 3: 1 моль CO на моль влаги
+            (1.0 * Yield_j1) + 
+            (2.0 * Yield_j2) + 
+            (1.0 * MOISTURE_RATIO * Yield_j3) 
         );
 
         return (n_CO * M_CO) / 1e6;
@@ -357,7 +356,6 @@ public static class CarbideEmissions
     {
         double n_CaC2 = (G_CaC2 * 1e6) / M_CaC2;
 
-        // Реакция 4: 4 моля CO₂ на 2 моля CaC₂ = коэффициент 2.0
         double n_CO2 = n_CaC2 * (2.0 * Yield_j4);
 
         return (n_CO2 * M_CO2) / 1e6;
@@ -367,7 +365,6 @@ public static class CarbideEmissions
     {
         double n_CaC2 = (G_CaC2 * 1e6) / M_CaC2;
 
-        // Реакция 3: 1 моль H₂ на 1 моль прореагировавшей влаги
         double n_H2 = n_CaC2 * (1.0 * MOISTURE_RATIO * Yield_j3);
 
         return (n_H2 * M_H2) / 1e6;

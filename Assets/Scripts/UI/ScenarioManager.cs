@@ -20,9 +20,9 @@ public class ScenarioManager : MonoBehaviour
     [Header("Объекты обучения")]
     [SerializeField] private GameObject trainingObjects;
 
-    private string _selectedScenarioId;
+    private int _selectedScenarioId;
 
-    public bool IsScenarioSelected => !string.IsNullOrEmpty(_selectedScenarioId);
+    public bool IsScenarioSelected => _selectedScenarioId > 0;
 
     private void Start()
     {
@@ -48,7 +48,7 @@ public class ScenarioManager : MonoBehaviour
             _startButton.onClick.RemoveListener(OnStartButtonClicked);
     }
 
-    public void OnScenarioSelected(string scenarioId)
+    public void OnScenarioSelected(int scenarioId)
     {
         _selectedScenarioId = scenarioId;
         Debug.Log($"Scenario selected: {scenarioId}");

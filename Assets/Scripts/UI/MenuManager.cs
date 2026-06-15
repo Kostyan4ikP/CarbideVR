@@ -1,32 +1,83 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Net;
 using TMPro;
 using UnityEngine;
-using System.Net;
 using UnityEngine.UI;
+using Newtonsoft.Json;
 
 public class MenuManager : MonoBehaviour
 {
     [Header("Панели")]
-    [SerializeField] GameObject AutorisationPanel;
-    [SerializeField] GameObject ScenarioPanel;
+    [SerializeField] private GameObject _autorizationPanel;
+    [SerializeField] private GameObject _scenarioPanel;
 
-    [Header("Поля ввода")]
+    [Header("Поля ввода (Авторизация)")]
     [SerializeField] private TMP_InputField _login;
     [SerializeField] private TMP_InputField _password;
     [SerializeField] private TMP_InputField _ip;
     [SerializeField] private TMP_InputField _port;
+    [SerializeField] private Button _connectButton;
+
+    [Header("Кнопки (Сценарии)")]
+    [SerializeField] private Button _closeButton;
     [SerializeField] private Button _startButton;
 
     [Header("Ссылка на сеть")]
     public VRClient _network;
 
+    [Header("VR Movement")]
+    [SerializeField] private VRMovementController movementController;
+
+    [Header("Объекты обучения")]
+    [SerializeField] private GameObject trainingObjects;
+
+    public int _userId;
+    private string _selectedScenarioId;
+    public bool IsScenarioSelected => !string.IsNullOrEmpty(_selectedScenarioId);
+
     private void Start()
+    {
+        if (movementController != null)
+            movementController.DisableMovement();
+
+        if (trainingObjects != null)
+            trainingObjects.SetActive(false);
+
+        if (_startButton != null)
+            _startButton.interactable = false;
+
+        if (_connectButton != null)
+            _connectButton.onClick.AddListener(OnConnectButtonClick);
+        if (_closeButton != null)
+            _closeButton.onClick.AddListener(OnCloseButtonClicked);
+        if (_startButton != null)
+            _startButton.onClick.AddListener(OnStartButtonClicked);
+
+        Debug.Log("MenuManager initialized.");
+    }
+
+    private void OnDestroy()
+    {
+        if (_connectButton != null)
+            _connectButton.onClick.RemoveListener(OnConnectButtonClick);
+        if (_closeButton != null)
+            _closeButton.onClick.RemoveListener(OnCloseButtonClicked);
+        if (_startButton != null)
+            _startButton.onClick.RemoveListener(OnStartButtonClicked);
+    }
+
+    public void EnableStartButton()
     {
         if (_startButton != null)
         {
-            _startButton.onClick.AddListener(OnConnectButtonClick);
+            _startButton.interactable = true;
+            Debug.Log("Кнопка Start разблокирована");
         }
     }
+
+    #region Авторизация
 
     private async void OnConnectButtonClick()
     {
@@ -64,7 +115,7 @@ public class MenuManager : MonoBehaviour
 
         if (isCorrectData)
         {
-            _startButton.interactable = false;
+            _connectButton.interactable = false;
 
             try
             {
@@ -84,8 +135,8 @@ public class MenuManager : MonoBehaviour
                     if (success)
                     {
                         Debug.Log("Авторизация успешна!");
-                        AutorisationPanel.SetActive(false);
-                        ScenarioPanel.SetActive(true);
+                        _userId = JsonConvert.DeserializeObject<int>(response["user_id"].ToString());
+                        SwitchToScenarioPanel();
 
                         _login.text = "";
                         _password.text = "";
@@ -106,7 +157,7 @@ public class MenuManager : MonoBehaviour
             }
             finally
             {
-                _startButton.interactable = true;
+                _connectButton.interactable = true;
             }
         }
         else
@@ -115,6 +166,7 @@ public class MenuManager : MonoBehaviour
             return;
         }
     }
+
     private bool ValidateIP(string ip)
     {
         if (string.IsNullOrEmpty(ip)) return false;
@@ -133,9 +185,80 @@ public class MenuManager : MonoBehaviour
         return false;
     }
 
+    #endregion
+
+    #region Управление сценариями
+
+    public void OnScenarioSelected(string scenarioId)
+    {
+        _selectedScenarioId = scenarioId;
+        Debug.Log($"Scenario selected: {scenarioId}");
+    }
+
+    private void OnCloseButtonClicked()
+    {
+        if (_network != null)
+        {
+            _network.Disconnect();
+        }
+        else
+        {
+            Debug.LogWarning("VRClient не назначен в инспекторе MenuManager!");
+        }
+
+        SwitchToAutorizationPanel();
+    }
+
+    private void OnStartButtonClicked()
+    {
+        Debug.Log($"Starting scenario: {_selectedScenarioId}");
+
+        if (_scenarioPanel != null)
+            _scenarioPanel.SetActive(false);
+
+        if (trainingObjects != null)
+            trainingObjects.SetActive(true);
+        else
+            Debug.LogWarning("Training Objects не назначены!");
+
+        if (movementController != null)
+        {
+            movementController.EnableMovement();
+            Debug.Log("Movement enabled");
+        }
+
+        Debug.Log("Scenario started successfully!");
+    }
+
+    #endregion
+
+    #region Переключение панелей
+
+    private void SwitchToScenarioPanel()
+    {
+        if (_autorizationPanel != null)
+            _autorizationPanel.SetActive(false);
+        if (_scenarioPanel != null)
+            _scenarioPanel.SetActive(true);
+    }
+
+    private void SwitchToAutorizationPanel()
+    {
+        if (_scenarioPanel != null)
+            _scenarioPanel.SetActive(false);
+        if (_autorizationPanel != null)
+            _autorizationPanel.SetActive(true);
+    }
+
+    #endregion
+
+    #region Утилиты
+
     private void ShowError(string message)
     {
         ErrorPopupManager.ShowError(message);
-        Debug.LogWarning($"Ошибка валидации: {message}");
+        Debug.LogWarning($"Ошибка: {message}");
     }
+
+    #endregion
 }

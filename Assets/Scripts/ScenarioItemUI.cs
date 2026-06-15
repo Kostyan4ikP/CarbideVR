@@ -18,7 +18,7 @@ public class ScenarioItemUI : MonoBehaviour
         _data = data;
         _manager = manager;
 
-        titleText.text = data.title;
+        titleText.text = (string)data.title;
         SetSelected(false);
 
         Button btn = GetComponent<Button>();
