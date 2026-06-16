@@ -77,13 +77,11 @@ public class ScenarioDataManager : MonoBehaviour
 
         foreach (var kvp in TechProcess)
         {
-            // 🔹 Проверяем ключ как строку
             if (kvp.Key is string strKey && strKey == paramIdStr)
             {
                 if (kvp.Value.TryGetValue(fieldName, out var value))
                     return value;
             }
-            // Для совместимости оставляем проверку на long и int
             else if (kvp.Key is long longKey && longKey == paramId)
             {
                 if (kvp.Value.TryGetValue(fieldName, out var value))

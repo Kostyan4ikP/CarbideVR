@@ -1,15 +1,9 @@
-using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using Unity.Android.Gradle.Manifest;
-using UnityEditor;
-using UnityEditor.Experimental.GraphView;
-using UnityEditor.VersionControl;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEngine.Analytics.IAnalytic;
 
 public class TechProcessController : MonoBehaviour
 {
